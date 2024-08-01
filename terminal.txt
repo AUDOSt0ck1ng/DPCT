@@ -54,9 +54,15 @@ python evaluate.py --data_path Generated/Chinese
 
 
 //上面是sdt提供的，但我後來都用我自己寫的 test 程式。
+//具體測試參考launch.json，這邊懶得寫，裡面都寫好了。
+//復現content classifier也是同上。
 
+//使用test2sets會產生每個測試的兩種方法產生字跡比較，可以在程式碼內自己修改要顯示甚麼，現在: SDT GT DPCT。
+//tsne每次都會一直蓋掉圖片，當時只是想要產生一張batch scope內的tsne視覺圖，正常測試不需要開啟這項功能。
+//跑完，結果資料夾會有clslog.txt和dtwlog.txt分別記錄每一筆資料的分類狀態和dtw比較，cls最後一行有總結，dtw可以利用otherprogram/sumdtw.py去統計。
 
 //如何起tensorboard服務
+//可以檢查訓練情況
 tensorboard --bind_all --logdir=/home/hhc102u/SDT/Saved/CHINESE_CASIA/
 
 //各種pkl代表的意涵
