@@ -196,7 +196,7 @@ class SDT_Generator(nn.Module):
         style_imgs = style_imgs.view(-1, in_planes, h, w)
         # [B*N, 1, 64, 64] -> [B*N, 512, 2, 2]
         
-        meaning_emb = self.contentcls.feature_ext(style_imgs)  #[4, B*N, C:512]
+        meaning_emb = self.content_encoder(style_imgs)  #[4, B*N, C:512]
         pro_meaning_fea = meaning_emb#self.pro_mlp_meaning(meaning_emb) #[4, B*N, C:256]
         flat_pro_meaning_fea = torch.mean(pro_meaning_fea, 0)
         

@@ -1,0 +1,334 @@
+import random
+from utils.util import normalize_xys
+from torch.utils.data import Dataset
+import os
+import torch
+import numpy as np
+import pickle
+from torchvision import transforms
+import lmdb
+from utils.util import corrds2xys
+import codecs
+import glob
+import cv2
+
+transform_data = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize(mean = (0.5), std = (0.5))
+])
+
+script={"CHINESE":['CASIA_CHINESE', 'Chinese_content.pkl', 'Chinese_content_simple.pkl'],
+        'JAPANESE':['TUATHANDS_JAPANESE', 'Japanese_content.pkl'],
+        "ENGLISH":['CASIA_ENGLISH', 'English_content.pkl']
+        }
+
+class ScriptDataset(Dataset):
+    def __init__(self, root='data', dataset='CHINESE', is_train=True, num_img = 15):#, is_simple_char = False):
+        data_path = os.path.join(root, script[dataset][0])
+        self.dataset = dataset
+        #if is_simple_char:
+        #    self.content = pickle.load(open(os.path.join(data_path, script[dataset][2]), 'rb')) #simple content samples
+        #else:
+        self.content = pickle.load(open(os.path.join(data_path, script[dataset][1]), 'rb')) #content samples
+            
+        self.char_dict = pickle.load(open(os.path.join(data_path, 'character_dict.pkl'), 'rb'))
+        
+        self.all_writer = pickle.load(open(os.path.join(data_path, 'writer_dict.pkl'), 'rb'))
+        self.is_train = is_train
+        if self.is_train:
+            lmdb_path = os.path.join(data_path, 'train') # online characters
+            self.img_path = os.path.join(data_path, 'train_style_samples') # style samples
+            self.num_img = num_img*2
+            self.writer_dict = self.all_writer['train_writer']
+        else:
+            lmdb_path = os.path.join(data_path, 'test') # online characters
+            self.img_path = os.path.join(data_path, 'test_style_samples') # style samples
+            self.num_img = num_img
+            self.writer_dict = self.all_writer['test_writer']
+        if not os.path.exists(lmdb_path):
+            raise IOError("input the correct lmdb path")
+        
+        self.lmdb = lmdb.open(lmdb_path, max_readers=8, readonly=True, lock=False, readahead=False, meminit=False)
+        if script[dataset][0] == "CASIA_CHINESE" :
+            self.max_len = -1  # Do not filter characters with many trajectory points
+        else: # Japanese, Indic, English
+            self.max_len = 150
+
+        self.all_path = {}
+        for pkl in os.listdir(self.img_path):
+            writer = pkl.split('.')[0]
+            self.all_path[writer] = os.path.join(self.img_path, pkl)
+
+        with self.lmdb.begin(write=False) as txn:
+            self.num_sample = int(txn.get('num_sample'.encode('utf-8')).decode())
+            if self.max_len <= 0:
+                self.indexes = list(range(0, self.num_sample))
+            else:
+                print('Filter the characters containing more than max_len points')
+                self.indexes = []
+                for i in range(self.num_sample):
+                    data_id = str(i).encode('utf-8')
+                    data_byte = txn.get(data_id)
+                    coords = pickle.loads(data_byte)['coordinates']
+                    if len(coords) < self.max_len:
+                        self.indexes.append(i)
+                    else:
+                        pass
+
+    def __getitem__(self, index):
+        index = self.indexes[index]
+        with self.lmdb.begin(write=False) as txn:
+            data = pickle.loads(txn.get(str(index).encode('utf-8')))
+            tag_char, coords, fname = data['tag_char'], data['coordinates'], data['fname']
+        char_img = self.content[tag_char] # content samples
+        char_img = char_img/255. # Normalize pixel values between 0.0 and 1.0
+        writer = data['fname'].split('.')[0]
+        img_path_list = self.all_path[writer]
+        with open(img_path_list, 'rb') as f:
+            style_samples = pickle.load(f)
+        img_list = []
+        img_label = []
+        label_id = []
+        random_indexs = random.sample(range(len(style_samples)), 2*self.num_img)    #避免取到 -1: 不在char_dict的字
+        counter = 0
+        for idx in random_indexs: 
+            tmp_img = style_samples[idx]['img']
+            tmp_img = tmp_img/255.
+            tmp_label = style_samples[idx]['label']
+            tmp_label_id = self.char_dict.find(tmp_label)
+            if not (tmp_label_id<0):
+                img_list.append(tmp_img)
+                if self.dataset == 'JAPANESE':
+                    tmp_label = bytes.fromhex(tmp_label[5:])
+                    tmp_label = codecs.decode(tmp_label, "cp932")
+                img_label.append(tmp_label)
+                label_id.append(tmp_label_id)
+                counter+=1
+                if counter == self.num_img:
+                    break
+        img_list = np.expand_dims(np.array(img_list), 1) # [N, C, H, W], C=1
+        coords = normalize_xys(coords) # Coordinate Normalization
+
+        #### Convert absolute coordinate values into relative ones
+        coords[1:, :2] = coords[1:, :2] - coords[:-1, :2]
+
+        writer_id = self.writer_dict[fname]
+        character_id = self.char_dict.find(tag_char)
+        #label_id = []
+        #for i in range(self.num_img):
+        #    temp_label_id = self.char_dict.find(img_label[i])
+        #    if temp_label_id<0: 
+        #        label_id.append(6763)
+        #    else:
+        #        label_id.append(temp_label_id)
+        return {'coords': torch.Tensor(coords),
+                'character_id': torch.Tensor([character_id]),
+                'writer_id': torch.Tensor([writer_id]),
+                'img_list': torch.Tensor(img_list),
+                'char_img': torch.Tensor(char_img),
+                'img_label': torch.Tensor([label_id])}
+
+    def __len__(self):
+        return len(self.indexes)
+
+    def collate_fn_(self, batch_data):
+        bs = len(batch_data)
+        max_len = max([s['coords'].shape[0] for s in batch_data]) + 1
+        output = {'coords': torch.zeros((bs, max_len, 5)), # (x, y, state_1, state_2, state_3)
+                  'coords_len': torch.zeros((bs, )),
+                  'character_id': torch.zeros((bs,)),
+                  'writer_id': torch.zeros((bs,)),
+                  'img_list': [],
+                  'char_img': [],
+                  'img_label': []}
+        output['coords'][:,:,-1] = 1 # pad to a fixed length with pen-end state
+        
+        for i in range(bs):
+            s = batch_data[i]['coords'].shape[0]
+            output['coords'][i, :s] = batch_data[i]['coords']
+            output['coords'][i, 0, :2] = 0 ### put pen-down state in the first token
+            output['coords_len'][i] = s
+            output['character_id'][i] = batch_data[i]['character_id']
+            output['writer_id'][i] = batch_data[i]['writer_id']
+            output['img_list'].append(batch_data[i]['img_list'])
+            output['char_img'].append(batch_data[i]['char_img'])
+            output['img_label'].append(batch_data[i]['img_label'])
+        output['img_list'] = torch.stack(output['img_list'], 0) # -> (B, num_img, 1, H, W)
+        temp = torch.stack(output['char_img'], 0)
+        output['char_img'] = temp.unsqueeze(1)
+        output['img_label'] = torch.cat(output['img_label'], 0)
+        output['img_label'] = output['img_label'].view(-1, 1).squeeze()
+        return output
+
+"""
+ loading generated online characters for evaluating the generation quality
+"""
+class Online_Dataset(Dataset):
+    def __init__(self, data_path):
+        lmdb_path = os.path.join(data_path, 'test')
+        print("loading characters from", lmdb_path)
+        if not os.path.exists(lmdb_path):
+            raise IOError("input the correct lmdb path")
+
+        self.char_dict = pickle.load(open(os.path.join(data_path, 'character_dict.pkl'), 'rb'))
+        self.writer_dict = pickle.load(open(os.path.join(data_path, 'writer_dict.pkl'), 'rb'))
+        self.lmdb = lmdb.open(lmdb_path, max_readers=8, readonly=True, lock=False, readahead=False, meminit=False)
+
+        with self.lmdb.begin(write=False) as txn:
+            self.num_sample = int(txn.get('num_sample'.encode('utf-8')).decode())
+            self.indexes = list(range(0, self.num_sample))
+
+    def __getitem__(self, index):
+        with self.lmdb.begin(write=False) as txn:
+            data = pickle.loads(txn.get(str(index).encode('utf-8')))
+            character_id, coords, writer_id, coords_gt = data['character_id'], \
+                data['coordinates'], data['writer_id'], data['coords_gt']
+        try:
+            coords, coords_gt = corrds2xys(coords), corrds2xys(coords_gt)
+        except:
+            print('Error in character format conversion')
+            return self[index+1]
+        return {'coords': torch.Tensor(coords),
+                'character_id': torch.Tensor([character_id]),
+                'writer_id': torch.Tensor([writer_id]),
+                'coords_gt': torch.Tensor(coords_gt)}
+
+    def __len__(self):
+        return len(self.indexes)
+
+    def collate_fn_(self, batch_data):
+        bs = len(batch_data)
+        max_len = max([s['coords'].shape[0] for s in batch_data])
+        max_len_gt = max([h['coords_gt'].shape[0] for h in batch_data])
+        output = {'coords': torch.zeros((bs, max_len, 5)),  # preds -> (x,y,state) 
+                  'coords_gt':torch.zeros((bs, max_len_gt, 5)), # gt -> (x,y,state) 
+                  'coords_len': torch.zeros((bs, )),
+                  'len_gt': torch.zeros((bs, )),
+                  'character_id': torch.zeros((bs,)),
+                  'writer_id': torch.zeros((bs,))}
+
+        for i in range(bs):
+            s = batch_data[i]['coords'].shape[0]
+            output['coords'][i, :s] = batch_data[i]['coords']
+            h =  batch_data[i]['coords_gt'].shape[0]
+            output['coords_gt'][i, :h] = batch_data[i]['coords_gt']
+            output['coords_len'][i], output['len_gt'][i] = s, h
+            output['character_id'][i] = batch_data[i]['character_id']
+            output['writer_id'][i] = batch_data[i]['writer_id']
+        return output
+    
+
+class UserDataset(Dataset):
+    def __init__(self, root='data', dataset='CHINESE', style_path='style_samples'):
+        data_path = os.path.join(root, script[dataset][0])
+        self.content = pickle.load(open(os.path.join(data_path, script[dataset][1]), 'rb')) #content samples
+        self.char_dict = pickle.load(open(os.path.join(data_path, 'character_dict.pkl'), 'rb'))
+        self.style_path = glob.glob(style_path+'/*.[jp][pn]g')
+
+    def __len__(self):
+        return len(self.char_dict)
+    
+    def __getitem__(self, index):
+        char = self.char_dict[index] # content samples
+        char_img = self.content[char] 
+        char_img = char_img/255. # Normalize pixel values between 0.0 and 1.0
+        img_list = []
+        for idx in range(len(self.style_path)):
+            style_img = cv2.imread(self.style_path[idx], flags=0)
+            style_img = cv2.resize(style_img, (64, 64))
+            style_img = style_img/255.
+            img_list.append(style_img)
+        img_list = np.expand_dims(np.array(img_list), 1)
+        
+        return {'char_img': torch.Tensor(char_img).unsqueeze(0),
+                'img_list': torch.Tensor(img_list),
+                'char': char}
+
+class Online_Dataset_2(Dataset):
+    def __init__(self, data_path_1, data_path_2):
+        lmdb_path_1 = os.path.join(data_path_1, 'test')
+        #lmdb_path_2 = os.path.join(data_path_2, 'test')
+        
+        print("loading characters from", lmdb_path_1)
+        if not os.path.exists(lmdb_path_1):
+            raise IOError("input the correct lmdb path")
+        
+        #print("loading characters from", lmdb_path_2)
+        #if not os.path.exists(lmdb_path_2):
+        #    raise IOError("input the correct lmdb path")
+
+        self.char_dict_1 = pickle.load(open(os.path.join(data_path_1, 'character_dict.pkl'), 'rb'))
+        #self.char_dict_2 = pickle.load(open(os.path.join(data_path_2, 'character_dict.pkl'), 'rb'))
+        
+        self.writer_dict = pickle.load(open(os.path.join(data_path_1, 'writer_dict.pkl'), 'rb'))
+        #self.writer_dict_2 = pickle.load(open(os.path.join(data_path_2, 'writer_dict.pkl'), 'rb'))
+        
+        self.lmdb_1 = lmdb.open(lmdb_path_1, max_readers=8, readonly=True, lock=False, readahead=False, meminit=False)
+        #self.lmdb_2 = lmdb.open(lmdb_path_2, max_readers=8, readonly=True, lock=False, readahead=False, meminit=False)
+
+        with self.lmdb_1.begin(write=False) as txn:
+            #with self.lmdb_2.begin(write=False) as txn_2:
+            
+            self.num_sample_1 = int(txn.get('num_sample'.encode('utf-8')).decode())
+            #self.num_sample_2 = int(txn_2.get('num_sample'.encode('utf-8')).decode())
+            
+            self.indexes_1 = list(range(0, self.num_sample_1))
+            #self.indexes_2 = list(range(0, self.num_sample_2))
+            #if len(self.indexes_1)!=len(self.indexes_2):
+            #    raise ValueError("indexes lenth")
+
+    def __getitem__(self, index):
+        with self.lmdb_1.begin(write=False) as txn:
+            #with self.lmdb_2.begin(write=False) as txn_2:
+            data_1 = pickle.loads(txn.get(str(index).encode('utf-8')))
+            #data_2 = pickle.loads(txn_2.get(str(index).encode('utf-8')))
+            
+            character_id, coords, writer_id, coords_gt = data_1['character_id'], \
+                data_1['coordinates'], data_1['writer_id'], data_1['coords_gt']
+                
+            coords_2 = data_1['coordinates_2']
+            #character_id_2, coords_2, writer_id_2, coords_gt_2 = data_2['character_id'], \
+            #    data_2['coordinates'], data_2['writer_id'], data_2['coords_gt']
+        try:
+            coords, coords_2, coords_gt, coords_gt_2 = corrds2xys(coords), corrds2xys(coords_2), corrds2xys(coords_gt), corrds2xys(coords_gt_2)
+        except:
+            print('Error in character format conversion')
+            return self[index+1]
+        return {'coords': torch.Tensor(coords),
+                'coords_2': torch.Tensor(coords_2),
+                'character_id': torch.Tensor([character_id]),
+                'writer_id': torch.Tensor([writer_id]),
+                'coords_gt': torch.Tensor(coords_gt)}
+
+    def __len__(self):
+        return len(self.indexes_1)
+
+    def collate_fn_(self, batch_data):
+        bs = len(batch_data)
+        max_len = max([s['coords'].shape[0] for s in batch_data])
+        max_len_gt = max([h['coords_gt'].shape[0] for h in batch_data])
+        max_len_2 = max([s['coords_2'].shape[0] for s in batch_data])
+        #max_len_gt = max([h['coords_gt'].shape[0] for h in batch_data])
+        
+        output = {'coords': torch.zeros((bs, max_len, 5)),  # preds -> (x,y,state) 
+                  'coords_2': torch.zeros((bs, max_len_2, 5)),  # preds -> (x,y,state) 
+                  'coords_gt':torch.zeros((bs, max_len_gt, 5)), # gt -> (x,y,state) 
+                  'coords_len': torch.zeros((bs, )),
+                  'coords_len_2': torch.zeros((bs, )),
+                  'len_gt': torch.zeros((bs, )),
+                  'character_id': torch.zeros((bs,)),
+                  'writer_id': torch.zeros((bs,))}
+        
+
+        for i in range(bs):
+            s = batch_data[i]['coords'].shape[0]
+            s_2 = batch_data[i]['coords_2'].shape[0]
+            output['coords'][i, :s] = batch_data[i]['coords']
+            output['coords_2'][i, :s_2] = batch_data[i]['coords_2']
+            
+            h =  batch_data[i]['coords_gt'].shape[0]
+            output['coords_gt'][i, :h] = batch_data[i]['coords_gt']
+            output['coords_len'][i], output['coords_len_2'][i], output['len_gt'][i] = s, s_2, h
+            output['character_id'][i] = batch_data[i]['character_id']
+            output['writer_id'][i] = batch_data[i]['writer_id']
+        return output

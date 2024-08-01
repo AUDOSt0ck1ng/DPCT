@@ -1,0 +1,113 @@
+//完整安裝SDT環境的指令
+//可以用這個環境跑DPCT
+
+//手邊有程式，這行就不用了
+git clone https://github.com/dailenson/SDT.git
+
+//建環境
+conda create --name SDT python=3.8
+y
+conda activate SDT
+conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+y
+pip install easydict
+pip install einops
+pip install six
+pip install packaging
+pip install lmdb
+pip install opencv-python
+pip install tqdm
+pip install fastdtw
+pip install tensorflow
+pip install tensorboardX
+pip install scikit-learn
+pip install matplotlib
+
+//offered datasets
+//我們直接使用SDT提供的訓練/測試集，他們有對影像做過一些前處理了。
+https://drive.google.com/drive/folders/17Ju2chVwlNvoX7HCKrhJOqySK-Y-hU8K
+
+//資料我後來把他解壓縮到Nami上了，並且在你想要跑程式的server上用指令連結以下路徑就可以存取。
+ln -s /mnt/Nami/dataset/CASIA_CHINESE-001/home/mdisk/daigang/StyleWriting/data/ /home/hhc102u/SDT/data
+
+//SDT提供的pretrain content encoder weight，但沒給classifier完整的weight。
+//pretrained content encoder model weight 'position_layer2_dim512_iter138k_test_acc0.9443.pth'
+https://drive.google.com/drive/folders/1N-MGRnXEZmxAW-98Hz2f-o80oHrNaN_a
+
+//SDT 整個模型的權重，比較的對象。
+//well trained SDT model weight 'checkpoint-iter199999.pth'
+https://drive.google.com/drive/folders/1LendizOwcNXlyY946ThS8HQ4wJX--YL7
+
+//SDT train。
+//train chinese
+python train.py --cfg configs/CHINESE_CASIA.yml --log Chinese_log
+python train.py --content_pretrained ./model_zoo/position_layer2_dim512_iter138k_test_acc0.9443.pth --cfg ./configs/CHINESE_CASIA.yml --log Chinese_log.txt
+
+//SDT test。
+//test chinese
+python test.py --pretrained_model ./model_zoo/checkpoint-iter199999.pth --store_type online --sample_size 500 --dir Generated/Chinese
+python test.py --pretrained_model ./model_zoo/checkpoint-iter199999.pth --store_type img --sample_size 500 --dir Generated/Chinese
+
+//要先test才能evaluate。
+//evaluate result
+python evaluate.py --data_path Generated/Chinese
+
+
+//上面是sdt提供的，但我後來都用我自己寫的 test 程式。
+
+
+//如何起tensorboard服務
+tensorboard --bind_all --logdir=/home/hhc102u/SDT/Saved/CHINESE_CASIA/
+
+//各種pkl代表的意涵
+Chinese_content.pkl
+    用途: 代表要寫出來的字(集合)
+    格式:
+        {[keys] : [numpy ndarray]}
+       
+        [keys]:
+        dict_keys(['一', '仗', ...共6763字])
+
+        [numpy ndarray]:
+        array([   
+            [,,,...64列],
+            [,,,...64列],
+            ...64行
+            [,,,...64列]
+        ])
+
+    理解: 第一層array使用keys:中文字ex:'一'、'仗'......而每個字又有一個具體的圖片numpy ndarray(64 x 64)。
+
+writer_dict.pkl
+    用途: 區分 train_writer 和 test_writer
+    格式:
+        {
+            'train_writer':
+            {
+                數+'.pot': index(int),...1020筆
+            }
+
+            'test_writer':
+            {
+               'C'+數+'-f.pot': index(int),...60筆
+            }
+        }
+
+    理解: 用來對應 train/test 的筆跡之作者，但對應的檔案其實是pkl檔案。
+
+character_dict.pkl
+    用途: 列出所有字 6763個
+    格式: 純字串，長度6763
+
+    理解: Chinese_content.pkl的keys，可以看有哪些字。
+
+ground truth
+C001-f.pkl or 001.pkl
+    用途: 紀錄每個人寫的 3755 個字
+    格式:
+        [
+            {'img': array(ndarray內容), 'label':哪個字},
+            {'img': array(ndarray內容), 'label':哪個字}, 
+            {'img': array(ndarray內容), 'label':哪個字}...3755筆
+        ]
+

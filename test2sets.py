@@ -20,6 +20,8 @@ from PIL import Image
 import torchvision.transforms as transforms
 from torchvision.transforms.functional import to_pil_image
 from torch.utils.tensorboard import SummaryWriter
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
 
 def mkdir(dir_path):
     if not os.path.exists(dir_path):
@@ -53,6 +55,35 @@ def add_SOS_token(preds, bs):
     preds = torch.cat((SOS, preds), 1)  # add the SOS token like GT
     preds = preds.detach().cpu().numpy()
     return preds
+
+def tsne_save(feature_set_1, feature_set_2, f_desc_1, f_desc_2, save_path):
+    num_samples_1 = feature_set_1.size(0)
+    
+    combined_features = torch.vstack((feature_set_1, feature_set_2))
+    combined_features = combined_features.cpu()
+    combined_features_np = combined_features.numpy()
+    tsne = TSNE(n_components=2, random_state=42)
+    tsne_results = tsne.fit_transform(combined_features_np)
+    
+    plt.figure(figsize=(10, 6))
+    plt.scatter(tsne_results[:num_samples_1, 0], tsne_results[:num_samples_1, 1], color='r', label=f_desc_1, alpha=0.5)
+    plt.scatter(tsne_results[num_samples_1:, 0], tsne_results[num_samples_1:, 1], color='b', label=f_desc_2, alpha=0.5)
+    plt.legend()
+    plt.title('t-SNE projection of '+f_desc_1+' and '+f_desc_2)
+    #plt.xlabel('Component 1')
+    #plt.ylabel('Component 2')
+
+    # 保存图像到文件
+    plt.savefig(save_path, format='png')  # 可以指定其他格式如 'pdf', 'svg' 等
+    #plt.show()
+
+def sdt_meaning(style_imgs, model_cls):
+    batch_size, num_imgs, in_planes, h, w = style_imgs.shape
+    style_imgs = style_imgs.view(-1, in_planes, h, w)
+    sdt_meaning_emb = model_cls.feature_ext(style_imgs)  #[4, B*N, C:512]
+    sdt_pro_meaning_fea = sdt_meaning_emb#self.pro_mlp_meaning(meaning_emb) #[4, B*N, C:256]
+    sdt_flat_pro_meaning_fea = torch.mean(sdt_pro_meaning_fea, 0)
+    return sdt_flat_pro_meaning_fea
 
 def main(opt):
     """ load config file into cfg"""
@@ -102,8 +133,8 @@ def main(opt):
     
     d_model = 512
     layer=2
-    model_cls = Content_Cls(d_model, layer) #(512, 2, 6764)
-    #model_cls = Content_Cls(d_model, layer).to('cuda') #(512, 2, 6764)
+    #model_cls = Content_Cls(d_model, layer) #(512, 2, 6764)
+    model_cls = Content_Cls(d_model, layer).to('cuda') #(512, 2, 6764)
     
     
     if len(opt.pretrained_model_cls) > 0:
@@ -140,36 +171,43 @@ def main(opt):
             else:
                 data = next(data_iter)
                 # prepare input
-                coords, coords_len, character_id, writer_id, img_list, char_img = data['coords'].cuda(), \
+                coords, coords_len, character_id, writer_id, img_list, char_img, char_gt = data['coords'].cuda(), \
                     data['coords_len'].cuda(), \
                     data['character_id'].long(), \
                     data['writer_id'].long().cuda(), \
                     data['img_list'].cuda(), \
-                    data['char_img'].cuda()
-                    #data['character_id'].long().cuda(), \
+                    data['char_img'].cuda(), \
+                    data['character_id'].long().cuda(), \
+                
+                #sdt_flat_pro_meaning_fea = sdt_meaning(img_list, model_cls)
                 
                 #preds = model.inference(img_list, char_img, 120)
-                preds = model.inference(img_list, char_img, 120)
+                preds, sdt_flat_pro_meaning_fea, sdt_flat_pro_writer_fea, sdt_flat_pro_character_fea = model.inference_tsne(img_list, char_img, 120)
                 bs = character_id.shape[0]
                 preds = add_SOS_token(preds, bs)
                 
-                preds_2 = model_2.inference(img_list, char_img, 120)
+                #preds_2 = model_2.inference(img_list, char_img, 120)
                 preds_2, flat_pro_meaning_fea, flat_pro_writer_fea, flat_pro_character_fea = model_2.inference(img_list, char_img, 120)
                 preds_2 = add_SOS_token(preds_2, bs)
                 
                 #pred_2_characterless
-                pred_2_characterless, _, _, _ = model_2.inference_option(img_list, char_img, 120, False, True)
-                pred_2_characterless = add_SOS_token(pred_2_characterless, bs)
+                #pred_2_characterless, _, _, _ = model_2.inference_option(img_list, char_img, 120, False, True)
+                #pred_2_characterless = add_SOS_token(pred_2_characterless, bs)
                 
                 #pred_2_writerless
-                pred_2_writerless, _, _, _ = model_2.inference_option(img_list, char_img, 120, True, False)
-                pred_2_writerless = add_SOS_token(pred_2_writerless, bs)
+                #pred_2_writerless, _, _, _ = model_2.inference_option(img_list, char_img, 120, True, False)
+                #pred_2_writerless = add_SOS_token(pred_2_writerless, bs)
                 
-                pred_2_disable_all, _, _, _ = model_2.inference_option(img_list, char_img, 120, True, True)
-                pred_2_disable_all = add_SOS_token(pred_2_disable_all, bs)
+                #pred_2_disable_all, _, _, _ = model_2.inference_option(img_list, char_img, 120, True, True)
+                #pred_2_disable_all = add_SOS_token(pred_2_disable_all, bs)
                 
                 ##tsne繪製特徵分布
                 #todo
+                if len(opt.tsne) > 0:
+                    tsne_save(sdt_flat_pro_meaning_fea, sdt_flat_pro_writer_fea, 'sdt content features', 'sdt writer features', os.path.join(opt.save_dir, 'sdt_WM_tsne.png'))
+                    tsne_save(sdt_flat_pro_meaning_fea, flat_pro_writer_fea, 'dpct content features', 'dpct writer features', os.path.join(opt.save_dir, 'dpct_WM_tsne.png'))
+                    tsne_save(sdt_flat_pro_character_fea, sdt_flat_pro_writer_fea, 'sdt character features', 'sdt writer features', os.path.join(opt.save_dir, 'sdt_WC_tsne.png'))
+                    tsne_save(flat_pro_character_fea, flat_pro_writer_fea, 'dpct character features', 'dpct writer features', os.path.join(opt.save_dir, 'dpct_WC_tsne.png'))    
                 
                 coords = coords.detach().cpu().numpy()
 
@@ -223,18 +261,18 @@ def main(opt):
 
                     sk_pil = coords_render(preds[i], split=True, width=w, height=h, thickness=tn, board=0)
                     sk_pil_2 = coords_render(preds_2[i], split=True, width=w, height=h, thickness=tn, board=0)
-                    sk_pil_2_characterless = coords_render(pred_2_characterless[i], split=True, width=w, height=h, thickness=tn, board=0)
-                    sk_pil_2_writerless = coords_render(pred_2_writerless[i], split=True, width=w, height=h, thickness=tn, board=0)
-                    sk_pil_2_disable_all = coords_render(pred_2_disable_all[i], split=True, width=w, height=h, thickness=tn, board=0)
+                    #sk_pil_2_characterless = coords_render(pred_2_characterless[i], split=True, width=w, height=h, thickness=tn, board=0)
+                    #sk_pil_2_writerless = coords_render(pred_2_writerless[i], split=True, width=w, height=h, thickness=tn, board=0)
+                    #sk_pil_2_disable_all = coords_render(pred_2_disable_all[i], split=True, width=w, height=h, thickness=tn, board=0)
                     sk_pil_gt = coords_render(coords[i], split=True, width=w, height=h, thickness=tn, board=0)
                     sk_pil_content = to_pil_image(content_slices[i])
                     
                     
                     width, height = sk_pil.size
                     imgs = [sk_pil_content, sk_pil, sk_pil_gt, sk_pil_2]
-                    imgs.append(sk_pil_2_characterless)
-                    imgs.append(sk_pil_2_writerless)
-                    imgs.append(sk_pil_2_disable_all)
+                    #imgs.append(sk_pil_2_characterless)
+                    #imgs.append(sk_pil_2_writerless)
+                    #imgs.append(sk_pil_2_disable_all)
                     
                     new_image = img_merge_for_vis(width, height, imgs)
                                         
@@ -258,20 +296,20 @@ def main(opt):
                     tensor_g1_idc = torch.cat((tensor_g1_idc, transform(sk_pil_2).unsqueeze(0)), dim=0)
                
                 #cls
-                preds_sdt_cls = model_cls.forward(tensor_sdt_idc)
-                preds_gt_cls = model_cls.forward(tensor_gt_idc)
-                preds_g1_cls = model_cls.forward(tensor_g1_idc)
-                #preds_sdt_cls = model_cls.forward(tensor_sdt_idc.to('cuda'))
-                #preds_gt_cls = model_cls.forward(tensor_gt_idc.to('cuda'))
-                #preds_g1_cls = model_cls.forward(tensor_g1_idc.to('cuda'))
+                #preds_sdt_cls = model_cls.forward(tensor_sdt_idc)
+                #preds_gt_cls = model_cls.forward(tensor_gt_idc)
+                #preds_g1_cls = model_cls.forward(tensor_g1_idc)
+                preds_sdt_cls = model_cls.forward(tensor_sdt_idc.to('cuda'))
+                preds_gt_cls = model_cls.forward(tensor_gt_idc.to('cuda'))
+                preds_g1_cls = model_cls.forward(tensor_g1_idc.to('cuda'))
                 
-                num, sdt_result = cal_cls_correct_num(preds_sdt_cls, character_id)
+                num, sdt_result = cal_cls_correct_num(preds_sdt_cls, char_gt)
                 sdt_cls_correct_num += num
                 
-                num, gt_result = cal_cls_correct_num(preds_gt_cls, character_id)
+                num, gt_result = cal_cls_correct_num(preds_gt_cls, char_gt)
                 gt_cls_correct_num += num
                 
-                num, g1_result = cal_cls_correct_num(preds_g1_cls, character_id)
+                num, g1_result = cal_cls_correct_num(preds_g1_cls, char_gt)
                 g1_cls_correct_num += num
                 
                 #data num in this iteration
@@ -311,5 +349,6 @@ if __name__ == '__main__':
 #    parser.add_argument('--store_type', dest='store_type', required=True, default='online', help='online or not')
 #    parser.add_argument('--store_img', dest='store_img', required=True, default=True, help='True or False')
     parser.add_argument('--sample_size', dest='sample_size', default='500', required=True, help='randomly generate a certain number of characters for each writer')
+    parser.add_argument('--tsne', dest='tsne', default='', required=False, help='print tsne or not')
     opt = parser.parse_args()
     main(opt)

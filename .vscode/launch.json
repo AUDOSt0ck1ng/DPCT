@@ -1,0 +1,302 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "SDT user generate",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "user_generate.py",
+            "console": "integratedTerminal",
+            "cwd": "/home/hhc102u/SDT",
+            "justMyCode": false,
+            "args": [
+                "--cfg",
+                "configs/CHINESE_USER.yml",
+                "--dir",
+                "Generated/Chinese_User",
+                "--pretrained_model",
+                "./model_zoo/checkpoint-iter199999.pth",
+                "--style_path",
+                //"/home/hhc102u/SDT/data/CASIA_CHINESE/style_samples"
+                "/home/hhc102u/SDT/data/CASIA_CHINESE/style_samples_style20"
+                //"/home/hhc102u/SDT/data/CASIA_CHINESE/style_samples_reg"
+            ]
+        },
+        {
+            "name": "SDT test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "test.py",
+            "console": "integratedTerminal",
+            "cwd": "/home/hhc102u/SDT",
+            "args": [
+                "--pretrained_model",
+                "./model_zoo/checkpoint-iter199999.pth",
+                "--store_type",
+                "img",
+                //"--store_type", "online", 
+                "--sample_size",
+                "500",
+                "--dir",
+                "Generated/Chinese"
+            ]
+        },
+        {
+            "name": "test 2sets",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "test2sets.py",
+            "console": "integratedTerminal",
+            "cwd": "/home/hhc102u/SDT",
+            "env": {"PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "2"},
+            "args": [
+                "--pretrained_model",
+                "./model_zoo/checkpoint-iter199999.pth",
+                "--pretrained_model_2",
+                //current best
+                "./Saved/CHINESE_CASIA/Chinese_cls-fixed_wm-all+wc-20240517_162135/model/checkpoint-iter187999.pth",
+                
+                //pen4 - glyph
+                //"./Saved/CHINESE_CASIA/Chinese_lf-mp+cls-20240512_004132/model/checkpoint-iter123999.pth",
+                //"./Saved/CHINESE_CASIA/Chinese_lf-mp+cls-20240513_043311/model/checkpoint-iter75999.pth",
+                
+                //cls-fixed_wm-miss_only+wc
+                //"./Saved/CHINESE_CASIA/Chinese_cls-fixed_wm-miss_only+wc-20240515_143146/model/checkpoint-iter199999.pth",
+                //cls-fixed_wm-match_only+wc
+                //"./Saved/CHINESE_CASIA/Chinese_cls-fixed_wm-match_only+wc-20240516_132412/model/checkpoint-iter195999.pth",
+                //cls-fixed_wm-all+wc
+                //"./Saved/CHINESE_CASIA/Chinese_cls-fixed_wm-all+wc-20240517_162135/model/checkpoint-iter187999.pth",
+                //cls-fixed_wm-match_only-wc
+                //"./Saved/CHINESE_CASIA/Chinese_cls-fixed_wm-match_only-wc-20240520_015018/model/checkpoint-iter191999.pth",
+                //cls-fix wc-only
+                //"./Saved/CHINESE_CASIA/Chinese_cls-fixed_wc-only-20240520_015359/model/checkpoint-iter191999.pth",
+
+                //June test case1
+                //"./Saved/CHINESE_CASIA/Chinese_cls-fixed-test-June-case1-20240609_131742/model/checkpoint-iter183999.pth",
+
+                //June test case2
+                //"./Saved/CHINESE_CASIA/Chinese_cls-fixed-test-June-case2-20240608_104240/model/checkpoint-iter167999.pth",
+                //"./Saved/CHINESE_CASIA/Chinese_cls-fixed-test-June-case2-20240609_091604/model/checkpoint-iter19999.pth",
+                
+                //June test case3
+                //"./Saved/CHINESE_CASIA/Chinese_cls-fixed-test-June-case3-20240610_142341/model/checkpoint-iter179999.pth",
+                //"./Saved/CHINESE_CASIA/Chinese_cls-fixed-June-reborn-case3-20240612_161640/model/checkpoint-iter171999.pth",
+                //171999
+
+                //June test case3 V2
+                //"./Saved/CHINESE_CASIA/Chinese_cls-fixed-June-reborn-case3-v2-20240613_204824/model/checkpoint-iter199999.pth",
+                
+                //179999
+
+                //June test case3 V4
+                //"./Saved/CHINESE_CASIA/Chinese_cls-fixed-June-reborn-v4-20240614_215748/model/checkpoint-iter187999.pth",
+                //iter195999
+
+                //June test V5
+                //"./Saved/CHINESE_CASIA/Chinese_cls-fixed-June-reborn-v5-20240615_232638/model/checkpoint-iter191999.pth",
+                //191999 >= 199999 > 195999 = 187999
+
+                //June test V6
+                //"./Saved/CHINESE_CASIA/Chinese_cls-fixed-June-reborn-v6-20240618_130559/model/checkpoint-iter199999.pth",
+
+                "--pretrained_model_cls",
+                //"./Saved/CHINESE_CASIA/Chinese_cls_256-20240502_002400/model/checkpoint-iter135999.pth", 我白癡不小心刪掉了
+                "./Saved/CHINESE_CASIA/Chinese_cls_256-20240610_150418/model/checkpoint-iter3999.pth",
+                //"./Saved/CHINESE_CASIA/pretrained_content_encoder/Content_Cls.pth",
+
+                "--sample_size",
+                "10",
+                "--dir",
+                "Generated/2sets_test_debug"
+            ]
+        },
+        {
+            "name": "test 2sets old",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "test2sets_old.py",
+            "console": "integratedTerminal",
+            "cwd": "/home/hhc102u/SDT",
+            "args": [
+                "--pretrained_model",
+                "./model_zoo/checkpoint-iter199999.pth",
+                "--pretrained_model_2",
+                //current best
+                //"./Saved/CHINESE_CASIA/Chinese_modify_gamma_1_lfmp-p-wl-fixed-20240507_102025/model/checkpoint-iter91999.pth",
+                
+                //pen4 - glyph
+                //"./Saved/CHINESE_CASIA/Chinese_lf-mp+cls-20240512_004132/model/checkpoint-iter123999.pth",
+                //"./Saved/CHINESE_CASIA/Chinese_lf-mp+cls-20240513_043311/model/checkpoint-iter75999.pth",
+                
+                //pen1 all
+                "./Saved/CHINESE_CASIA/Chinese_lf-mp+cls_pen1-20240513_202710/model/checkpoint-iter115999.pth",
+                
+                //trash
+                //"./Saved/CHINESE_CASIA/Chinese_modify_gamma_1_lfmpuni-fixed-20240510_022032/model/checkpoint-iter63999.pth",
+                //"./Saved/CHINESE_CASIA/Chinese_modify_gamma_1_lfmp-p-20240505_114145/model/checkpoint-iter199999.pth",
+                
+                "--pretrained_model_cls",
+                //"./Saved/CHINESE_CASIA/Chinese_cls-20240423_021903/model/checkpoint-iter23999.pth",
+                "./Saved/CHINESE_CASIA/pretrained_content_encoder/Content_Cls_135999.pth",
+                "--store_type",
+                "online",
+                "--store_img",
+                "True",
+                "--sample_size",
+                "10",
+                "--dir",
+                "Generated/2sets_test_debug"
+            ]
+        },
+        {
+            "name": "test cls only",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "cls_test.py",
+            "console": "integratedTerminal",
+            "cwd": "/home/hhc102u/SDT",
+            "env": {"PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "2"},
+            "args": [
+                "--pretrained_model_cls",
+                "./Saved/CHINESE_CASIA/Chinese_cls_256-20240610_150418/model/checkpoint-iter3999.pth",
+                
+                "--data_path",
+                //"./Generated/2sets_test_debug/test",
+                //"./Generated/2sets_test_wm-all+wc_redo(187999)/test",
+                //"./Generated/2sets_test_June-case2-all-167999/test",
+                //"./Generated/2sets_test_wc-only-redo(191999)/test",
+                //"./Generated/2sets_test_wm-match_only-wc/test",
+                //"./Generated/2sets_test_wm-match_only+wc/test",
+                //"./Generated/2sets_test_wm-miss_only+wc/test",
+                "/home/hhc102u/SDT/Generated/temp/cal717_5",
+
+
+                
+                //"--log_path",
+                //"./Generated/2sets_test_debug/test/other_clslog.txt",
+                "--char_dict_path",
+                "./data/CASIA_CHINESE/character_dict.pkl",
+            ]
+        },
+        {
+            "name": "Purposal test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "test.py",
+            "console": "integratedTerminal",
+            "cwd": "/home/hhc102u/SDT",
+            "args": [
+                "--pretrained_model",
+                "/home/hhc102u/SDT/Saved/CHINESE_CASIA/Chinese_log.txt-20240415_094043/model/checkpoint-iter199999.pth",
+                //"--store_type","img",
+                "--store_type",
+                "online",
+                "--sample_size",
+                "500",
+                "--dir",
+                "Generated/Chinese_purposal_online_test"
+                //"Generated/Chinese_purposal_img_test"
+            ]
+        },
+        {
+            "name": "SDT evaluate",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "evaluate.py",
+            "console": "integratedTerminal",
+            "cwd": "/home/hhc102u/SDT",
+            "args": [
+                "--data_path",
+                "Generated/Chinese_purposal_online_test_modify_gamma_1",
+                //"--visualize_dir",
+                //"Generated/Chinese_purposal_online_test_modify_gamma_1/vis"
+            ]
+        },
+        {
+            "name": "Purposal evaluate",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "evaluate.py",
+            "console": "integratedTerminal",
+            "cwd": "/home/hhc102u/SDT",
+            "args": [
+                "--data_path",
+                "Generated/Chinese_purposal_online_test_151999",
+                //"--visualize_dir",
+                //"Generated/Chinese/vis"
+            ]
+        },
+        {
+            "name": "SDT train",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "train.py",
+            "console": "integratedTerminal",
+            "cwd": "/home/hhc102u/SDT",
+            "args": [
+                "--pretrained_model","",
+                "--contentcls_pretrained",
+                //"./Saved/CHINESE_CASIA/pretrained_content_encoder/Content_Cls_135999.pth",
+                //"./Saved/CHINESE_CASIA/Chinese_cls_256-20240610_150418/model/checkpoint-iter135999.pth",
+                "./Saved/CHINESE_CASIA/Chinese_cls_256-20240610_150418/model/checkpoint-iter3999.pth",
+
+                "--content_pretrained","",
+                //"./model_zoo/position_layer2_dim512_iter138k_test_acc0.9443.pth",
+                "--cfg",
+                "./configs/CHINESE_CASIA.yml",
+                "--log",
+                //"Chinese_cls-fixed_wm-miss_only+wc"
+                "Chinese_cls-fixed-test-June-debug"
+            ]
+        },
+        {
+            "name": "SDT old train",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "train.py",
+            "console": "integratedTerminal",
+            "cwd": "/home/hhc102u/SDT",
+            "args": [
+                //"pretrained_model",
+                //"",
+                //"--contentcls_pretrained",
+                //"./Saved/CHINESE_CASIA/pretrained_content_encoder/Content_Cls_135999.pth",
+                "--content_pretrained",
+                "./model_zoo/position_layer2_dim512_iter138k_test_acc0.9443.pth",
+                "--cfg",
+                "./configs/CHINESE_CASIA.yml",
+                "--log",
+                "Chinese_modify_debug"
+            ]
+        },
+        {
+            "name": "cls train",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "train_cls.py",
+            "console": "integratedTerminal",
+            "cwd": "/home/hhc102u/SDT",
+            "justMyCode": false,
+            "args": [
+                //"--pretrained_model",
+                //"./Saved/CHINESE_CASIA/Chinese_cls-20240423_021903/model/checkpoint-iter23999.pth",
+                "--content_pretrained",
+                "./model_zoo/position_layer2_dim512_iter138k_test_acc0.9443.pth",
+                "--cfg",
+                "./configs/CHINESE_CASIA.yml",
+                "--log",
+                "Chinese_cls_debug"
+            ]
+        }
+    ]
+}

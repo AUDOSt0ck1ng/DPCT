@@ -182,7 +182,7 @@ class DPCT_Generator(nn.Module):
         #flat_pro_character_fea = torch.mean(c_nce_emb_patch, 0)   #[4*B*2N, C256]
         
         flat_pro_meaning_fea = torch.mean(pro_meaning_fea, 0)   #[4*B*2N, C256]X [4*B*2N, C512]
-        style_samples_cls_pred = self.contentcls.cls_head(flat_pro_meaning_fea)
+        #style_samples_cls_pred = self.contentcls.cls_head(flat_pro_meaning_fea)
         
         #wm_nce_emb_part1 = torch.stack((flat_pro_meaning_fea, flat_pro_meaning_fea), 1) # [4*B*2N, 2, C256]
         
@@ -194,7 +194,7 @@ class DPCT_Generator(nn.Module):
         wc_nce_emb = nn.functional.normalize(wc_nce_emb, p=2, dim=2)
         #wm_nce_emb = nn.functional.normalize(wm_nce_emb, p=2, dim=2)
                
-        return pred_sequence, nce_emb, nce_emb_patch, wc_nce_emb, w_nce_emb, flat_pro_meaning_fea, style_samples_cls_pred
+        return pred_sequence, nce_emb, nce_emb_patch, wc_nce_emb, w_nce_emb, flat_pro_meaning_fea#, style_samples_cls_pred
 
     # style_imgs: [B, N, C, H, W]
     def inference(self, style_imgs, char_img, max_len):

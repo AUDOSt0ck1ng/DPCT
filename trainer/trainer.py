@@ -92,7 +92,7 @@ class Trainer:
     #    input  = style_imgs.view(-1, in_planes, h, w)  # [B*2N, C:1, H, W]
     #    output = self.model.contentcls.forward(input)
     #    return torch.argmax(output, dim=1).float()
-    
+        
     def _train_iter(self, data, step):
         self.model.train()
         prev_time = time.time()
@@ -108,7 +108,8 @@ class Trainer:
         # forward
         input_seq = coords[:, 1:-1]
         
-        preds, nce_emb, nce_emb_patch, wc_nce_emb, w_nce_emb, flat_pro_meaning_fea, style_samples_cls_pred = self.model(img_list, input_seq, char_img)
+        preds, nce_emb, nce_emb_patch, wc_nce_emb, w_nce_emb, flat_pro_meaning_fea = self.model(img_list, input_seq, char_img)
+        #preds, nce_emb, nce_emb_patch, wc_nce_emb, w_nce_emb, flat_pro_meaning_fea, style_samples_cls_pred = self.model(img_list, input_seq, char_img)
         
         #style_samples_cls_loss = self.cls_criterion(style_samples_cls_pred, img_label)
         #predicted_classes = torch.argmax(style_samples_cls_pred, dim=1).float()
