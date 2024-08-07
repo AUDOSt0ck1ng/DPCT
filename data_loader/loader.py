@@ -23,12 +23,9 @@ script={"CHINESE":['CASIA_CHINESE', 'Chinese_content.pkl', 'Chinese_content_simp
         }
 
 class ScriptDataset(Dataset):
-    def __init__(self, root='data', dataset='CHINESE', is_train=True, num_img = 15):#, is_simple_char = False):
+    def __init__(self, root='data', dataset='CHINESE', is_train=True, num_img = 15):
         data_path = os.path.join(root, script[dataset][0])
         self.dataset = dataset
-        #if is_simple_char:
-        #    self.content = pickle.load(open(os.path.join(data_path, script[dataset][2]), 'rb')) #simple content samples
-        #else:
         self.content = pickle.load(open(os.path.join(data_path, script[dataset][1]), 'rb')) #content samples
             
         self.char_dict = pickle.load(open(os.path.join(data_path, 'character_dict.pkl'), 'rb'))
@@ -114,13 +111,7 @@ class ScriptDataset(Dataset):
 
         writer_id = self.writer_dict[fname]
         character_id = self.char_dict.find(tag_char)
-        #label_id = []
-        #for i in range(self.num_img):
-        #    temp_label_id = self.char_dict.find(img_label[i])
-        #    if temp_label_id<0: 
-        #        label_id.append(6763)
-        #    else:
-        #        label_id.append(temp_label_id)
+
         return {'coords': torch.Tensor(coords),
                 'character_id': torch.Tensor([character_id]),
                 'writer_id': torch.Tensor([writer_id]),
@@ -243,92 +234,3 @@ class UserDataset(Dataset):
         return {'char_img': torch.Tensor(char_img).unsqueeze(0),
                 'img_list': torch.Tensor(img_list),
                 'char': char}
-
-class Online_Dataset_2(Dataset):
-    def __init__(self, data_path_1, data_path_2):
-        lmdb_path_1 = os.path.join(data_path_1, 'test')
-        #lmdb_path_2 = os.path.join(data_path_2, 'test')
-        
-        print("loading characters from", lmdb_path_1)
-        if not os.path.exists(lmdb_path_1):
-            raise IOError("input the correct lmdb path")
-        
-        #print("loading characters from", lmdb_path_2)
-        #if not os.path.exists(lmdb_path_2):
-        #    raise IOError("input the correct lmdb path")
-
-        self.char_dict_1 = pickle.load(open(os.path.join(data_path_1, 'character_dict.pkl'), 'rb'))
-        #self.char_dict_2 = pickle.load(open(os.path.join(data_path_2, 'character_dict.pkl'), 'rb'))
-        
-        self.writer_dict = pickle.load(open(os.path.join(data_path_1, 'writer_dict.pkl'), 'rb'))
-        #self.writer_dict_2 = pickle.load(open(os.path.join(data_path_2, 'writer_dict.pkl'), 'rb'))
-        
-        self.lmdb_1 = lmdb.open(lmdb_path_1, max_readers=8, readonly=True, lock=False, readahead=False, meminit=False)
-        #self.lmdb_2 = lmdb.open(lmdb_path_2, max_readers=8, readonly=True, lock=False, readahead=False, meminit=False)
-
-        with self.lmdb_1.begin(write=False) as txn:
-            #with self.lmdb_2.begin(write=False) as txn_2:
-            
-            self.num_sample_1 = int(txn.get('num_sample'.encode('utf-8')).decode())
-            #self.num_sample_2 = int(txn_2.get('num_sample'.encode('utf-8')).decode())
-            
-            self.indexes_1 = list(range(0, self.num_sample_1))
-            #self.indexes_2 = list(range(0, self.num_sample_2))
-            #if len(self.indexes_1)!=len(self.indexes_2):
-            #    raise ValueError("indexes lenth")
-
-    def __getitem__(self, index):
-        with self.lmdb_1.begin(write=False) as txn:
-            #with self.lmdb_2.begin(write=False) as txn_2:
-            data_1 = pickle.loads(txn.get(str(index).encode('utf-8')))
-            #data_2 = pickle.loads(txn_2.get(str(index).encode('utf-8')))
-            
-            character_id, coords, writer_id, coords_gt = data_1['character_id'], \
-                data_1['coordinates'], data_1['writer_id'], data_1['coords_gt']
-                
-            coords_2 = data_1['coordinates_2']
-            #character_id_2, coords_2, writer_id_2, coords_gt_2 = data_2['character_id'], \
-            #    data_2['coordinates'], data_2['writer_id'], data_2['coords_gt']
-        try:
-            coords, coords_2, coords_gt, coords_gt_2 = corrds2xys(coords), corrds2xys(coords_2), corrds2xys(coords_gt), corrds2xys(coords_gt_2)
-        except:
-            print('Error in character format conversion')
-            return self[index+1]
-        return {'coords': torch.Tensor(coords),
-                'coords_2': torch.Tensor(coords_2),
-                'character_id': torch.Tensor([character_id]),
-                'writer_id': torch.Tensor([writer_id]),
-                'coords_gt': torch.Tensor(coords_gt)}
-
-    def __len__(self):
-        return len(self.indexes_1)
-
-    def collate_fn_(self, batch_data):
-        bs = len(batch_data)
-        max_len = max([s['coords'].shape[0] for s in batch_data])
-        max_len_gt = max([h['coords_gt'].shape[0] for h in batch_data])
-        max_len_2 = max([s['coords_2'].shape[0] for s in batch_data])
-        #max_len_gt = max([h['coords_gt'].shape[0] for h in batch_data])
-        
-        output = {'coords': torch.zeros((bs, max_len, 5)),  # preds -> (x,y,state) 
-                  'coords_2': torch.zeros((bs, max_len_2, 5)),  # preds -> (x,y,state) 
-                  'coords_gt':torch.zeros((bs, max_len_gt, 5)), # gt -> (x,y,state) 
-                  'coords_len': torch.zeros((bs, )),
-                  'coords_len_2': torch.zeros((bs, )),
-                  'len_gt': torch.zeros((bs, )),
-                  'character_id': torch.zeros((bs,)),
-                  'writer_id': torch.zeros((bs,))}
-        
-
-        for i in range(bs):
-            s = batch_data[i]['coords'].shape[0]
-            s_2 = batch_data[i]['coords_2'].shape[0]
-            output['coords'][i, :s] = batch_data[i]['coords']
-            output['coords_2'][i, :s_2] = batch_data[i]['coords_2']
-            
-            h =  batch_data[i]['coords_gt'].shape[0]
-            output['coords_gt'][i, :h] = batch_data[i]['coords_gt']
-            output['coords_len'][i], output['coords_len_2'][i], output['len_gt'][i] = s, s_2, h
-            output['character_id'][i] = batch_data[i]['character_id']
-            output['writer_id'][i] = batch_data[i]['writer_id']
-        return output

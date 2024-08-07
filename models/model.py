@@ -26,11 +26,8 @@ class DPCT_Generator(nn.Module):
         self.writer_head = TransformerEncoder(encoder_layer, num_head_layers, writer_norm)
         self.glyph_head = TransformerEncoder(encoder_layer, num_head_layers, glyph_norm)
 
-        ### content ecoder + meaning head for style detaching
         self.contentcls = Content_Cls(d_model, num_encoder_layers)
         #self.content_encoder = Content_TR(d_model, num_encoder_layers)
-        
-        #self.meaning_head = Content_Cls(d_model, num_encoder_layers)
         
         ### decoder for receiving writer-wise and character-wise styles
         decoder_layer = TransformerDecoderLayer(d_model, nhead, dim_feedforward,
@@ -47,8 +44,6 @@ class DPCT_Generator(nn.Module):
             nn.Linear(512, 4096), nn.GELU(), nn.Linear(4096, 256))
         self.pro_mlp_character = nn.Sequential(
             nn.Linear(512, 4096), nn.GELU(), nn.Linear(4096, 256))
-        #self.pro_mlp_meaning = nn.Sequential(
-        #    nn.Linear(512, 4096), nn.GELU(), nn.Linear(4096, 256))
         
         self.SeqtoEmb = SeqtoEmb(hid_dim=d_model)
         self.EmbtoSeq = EmbtoSeq(hid_dim=d_model)
@@ -87,12 +82,10 @@ class DPCT_Generator(nn.Module):
         batch_size, num_imgs, in_planes, h, w = style_imgs.shape     
         # style_imgs: [B, 2*N, C:1, H, W] -> FEAT_ST_ENC: [4*N, B, C:512]
         style_imgs = style_imgs.view(-1, in_planes, h, w)  # [B*2N, C:1, H, W]
-        #meaning fea
-        #meaning_emb ,pred_meaning_class = self.meaning_head.inference(style_imgs)
-        #meaning_emb = self.content_encoder(style_imgs)  #[4, B*2N, C:512] depreciated
+        #content meanings
         meaning_emb = self.contentcls.feature_ext(style_imgs)  #[4, B*2N, C:512]
         
-        pro_meaning_fea = meaning_emb#self.pro_mlp_meaning() #[4, B*2N, C:256]X [4, B*2N, C:512] 
+        pro_meaning_fea = meaning_emb#self.pro_mlp_meaning() #[4, B*2N, C:256]X [4, B*2N, C:512] latest: no need to project
 
         
         style_embe = self.Feat_Encoder(style_imgs)  # [B*2N, C:512, 2, 2]
@@ -104,9 +97,6 @@ class DPCT_Generator(nn.Module):
         memory = self.base_encoder(FEAT_ST_ENC)  # [4, B*2N, C]
         writer_memory = self.writer_head(memory)
         glyph_memory = self.glyph_head(memory)
-
-        #pro_writer_fea = self.pro_mlp_meaning(writer_memory)    #[4, B*2N, C:256]
-        #pro_character_fea = self.pro_mlp_meaning(writer_memory) #[4, B*2N, C:256]
         
         writer_memory = rearrange(writer_memory, 't (b p n) c -> t (p b) n c',
                            b=batch_size, p=2, n=anchor_num)  # [4, 2*B, N, C]
@@ -114,11 +104,11 @@ class DPCT_Generator(nn.Module):
                            b=batch_size, p=2, n=anchor_num)  # [4, 2*B, N, C]
         
         # writer-nce
-        memory_fea = rearrange(writer_memory, 't b n c ->(t n) b c')  # [4*N, 2*B, C]       總共取樣30個，所以是每15個分前後兩群。然後1、1對應成15組positive pair? 然後靠mean直接把這些都幹掉?所以只會剩下1組positive pair?
+        memory_fea = rearrange(writer_memory, 't b n c ->(t n) b c')  # [4*N, 2*B, C]
         compact_fea = torch.mean(memory_fea, 0) # [2*B, C]
         # compact_fea:[2*B, C:512] ->  nce_emb: [B, 2, C:256]
         pro_emb = self.pro_mlp_writer(compact_fea)
-        w_pro_emb = compact_fea #self.pro_mlp_meaning(compact_fea)
+        w_pro_emb = compact_fea
         w_query_emb = w_pro_emb[:batch_size, :]
         w_pos_emb = w_pro_emb[batch_size:, :]
         w_nce_emb = torch.stack((w_query_emb, w_pos_emb), 1) # [B, 2, C]
@@ -129,14 +119,14 @@ class DPCT_Generator(nn.Module):
         nce_emb = nn.functional.normalize(nce_emb, p=2, dim=2)
 
         # glyph-nce
-        patch_emb = glyph_memory[:, :batch_size]  # [4, B, N, C]            ###???為什麼只有取前Batchsize個? 這樣不是只有取一半的view嗎?
+        patch_emb = glyph_memory[:, :batch_size]  # [4, B, N, C]
         # sample the positive pair
         anc, positive = self.random_double_sampling(patch_emb)
         n_channels = anc.shape[-1]
         anc = anc.reshape(batch_size, -1, n_channels)
         anc_compact = torch.mean(anc, 1, keepdim=True) 
         
-        c_anc_compact = anc_compact#self.pro_mlp_meaning(anc_compact)
+        c_anc_compact = anc_compact
         anc_compact = self.pro_mlp_character(anc_compact) # [B, 1, C]
         positive = positive.reshape(batch_size, -1, n_channels)
         positive_compact = torch.mean(positive, 1, keepdim=True)
@@ -176,25 +166,13 @@ class DPCT_Generator(nn.Module):
         h = hs.transpose(1, 2)[-1]  # B T C
         pred_sequence = self.EmbtoSeq(h)
         
-        ### meaning_fea
-        #flat_pro_writer_fea = pro_writer_fea.reshape(120, -1, 256)              # [4, 4*B*2N, C256] ->[4*2N, B, C256]
-        #flat_pro_writer_fea = torch.mean(flat_pro_writer_fea, 0)   # [B, C256]
-        #flat_pro_character_fea = torch.mean(c_nce_emb_patch, 0)   #[4*B*2N, C256]
+        ### content meanings
+        flat_pro_meaning_fea = torch.mean(pro_meaning_fea, 0)
         
-        flat_pro_meaning_fea = torch.mean(pro_meaning_fea, 0)   #[4*B*2N, C256]X [4*B*2N, C512]
-        #style_samples_cls_pred = self.contentcls.cls_head(flat_pro_meaning_fea)
-        
-        #wm_nce_emb_part1 = torch.stack((flat_pro_meaning_fea, flat_pro_meaning_fea), 1) # [4*B*2N, 2, C256]
-        
-        #wc_nce_emb_part1 = torch.stack((flat_pro_writer_fea, flat_pro_writer_fea), 1) # [4*B*2N, 2, C256]
-        #wc_nce_emb_part2 = torch.stack((flat_pro_character_fea, flat_pro_character_fea), 1) # [4*B*2N, 2, C256]
-        
-        #wm_nce_emb = torch.cat((wm_nce_emb_part1, w_nce_emb), dim=0)
         wc_nce_emb = torch.cat((w_nce_emb, c_nce_emb_patch), dim=0)
         wc_nce_emb = nn.functional.normalize(wc_nce_emb, p=2, dim=2)
-        #wm_nce_emb = nn.functional.normalize(wm_nce_emb, p=2, dim=2)
-               
-        return pred_sequence, nce_emb, nce_emb_patch, wc_nce_emb, w_nce_emb, flat_pro_meaning_fea#, style_samples_cls_pred
+                       
+        return pred_sequence, nce_emb, nce_emb_patch, wc_nce_emb, w_nce_emb, flat_pro_meaning_fea
 
     # style_imgs: [B, N, C, H, W]
     def inference(self, style_imgs, char_img, max_len):
@@ -204,7 +182,7 @@ class DPCT_Generator(nn.Module):
         
         #meaning_emb = self.content_encoder(style_imgs)  #[4, B*N, C:512]
         meaning_emb = self.contentcls.feature_ext(style_imgs)  #[4, B*N, C:512]
-        pro_meaning_fea = meaning_emb#self.pro_mlp_meaning(meaning_emb) #[4, B*N, C:256]
+        pro_meaning_fea = meaning_emb
         flat_pro_meaning_fea = torch.mean(pro_meaning_fea, 0)
         
         # [B*N, 1, 64, 64] -> [B*N, 512, 2, 2]
@@ -227,7 +205,7 @@ class DPCT_Generator(nn.Module):
 
         #char_emb = self.content_encoder(char_img)
         char_emb = self.contentcls.feature_ext(char_img) # [4, N, 512]
-        char_emb = torch.mean(char_emb, 0) #[N, 256] ???應該是 512
+        char_emb = torch.mean(char_emb, 0)
         src_tensor = torch.zeros(max_len + 1, batch_size, 512).to(char_emb)
         pred_sequence = torch.zeros(max_len, batch_size, 5).to(char_emb)
         src_tensor[0] = char_emb
@@ -249,7 +227,7 @@ class DPCT_Generator(nn.Module):
                 break
             else:
                 pass
-        return pred_sequence.transpose(0, 1), flat_pro_meaning_fea, flat_pro_writer_fea, flat_pro_character_fea # N, T, C  , 
+        return pred_sequence.transpose(0, 1), flat_pro_meaning_fea, flat_pro_writer_fea, flat_pro_character_fea
 
     def inference_option(self, style_imgs, char_img, max_len, writer_disable, character_disable):
         batch_size, num_imgs, in_planes, h, w = style_imgs.shape
@@ -258,7 +236,7 @@ class DPCT_Generator(nn.Module):
         
         #meaning_emb = self.content_encoder(style_imgs)  #[4, B*N, C:512]
         meaning_emb = self.contentcls.feature_ext(style_imgs)  #[4, B*N, C:512]
-        pro_meaning_fea = meaning_emb#self.pro_mlp_meaning(meaning_emb) #[4, B*N, C:256]
+        pro_meaning_fea = meaning_emb
         flat_pro_meaning_fea = torch.mean(pro_meaning_fea, 0)
         
         # [B*N, 1, 64, 64] -> [B*N, 512, 2, 2]
@@ -281,7 +259,7 @@ class DPCT_Generator(nn.Module):
 
         #char_emb = self.content_encoder(char_img)
         char_emb = self.contentcls.feature_ext(char_img) # [4, N, 512]
-        char_emb = torch.mean(char_emb, 0) #[N, 256] ???應該是 512
+        char_emb = torch.mean(char_emb, 0)
         src_tensor = torch.zeros(max_len + 1, batch_size, 512).to(char_emb)
         pred_sequence = torch.zeros(max_len, batch_size, 5).to(char_emb)
         src_tensor[0] = char_emb
@@ -308,7 +286,7 @@ class DPCT_Generator(nn.Module):
                 break
             else:
                 pass
-        return pred_sequence.transpose(0, 1), flat_pro_meaning_fea, flat_pro_writer_fea, flat_pro_character_fea # N, T, C  , 
+        return pred_sequence.transpose(0, 1), flat_pro_meaning_fea, flat_pro_writer_fea, flat_pro_character_fea
 
 '''
 project the handwriting sequences to the transformer hidden space
