@@ -96,8 +96,6 @@ def read_txt_file(filepath, target, char_list):
 
 if __name__ == "__main__":
     filepath = '/home/hhc102u/SDT/Generated/2sets_test_wm-all+wc_redo(187999)/test'  # 替換為你的txt檔案路徑
-    #filepath = '/home/hhc102u/SDT/Generated/2sets_test_June_bestcheck/test'
-    #filepath = '/home/hhc102u/SDT/Generated/2sets_test_wc-only-redo(191999)/test'
     target = '/home/hhc102u/SDT/Generated/temp'
     char_list = ['免','兔']#]'乓','乒','兵','水','冰','丸','九','力','刀','刁','天','夫','中','串']
     parsed_data = read_txt_file(filepath, target, char_list)

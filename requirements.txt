@@ -1,0 +1,12 @@
+easydict
+einops
+six
+packaging
+lmdb
+opencv-python
+tqdm
+fastdtw
+tensorflow
+tensorboardX
+scikit-learn
+matplotlib

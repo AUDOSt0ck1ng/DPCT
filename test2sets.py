@@ -12,7 +12,7 @@ from data_loader.loader import ScriptDataset
 #import pickle
 from models.encoder import Content_Cls
 from models.model import DPCT_Generator
-from models.o_model import SDT_Generator
+from models.sdt_model import SDT_Generator
 import tqdm
 from utils.util import writeCache, dxdynp_to_list, coords_render, corrds2xys
 #import lmdb
@@ -42,7 +42,7 @@ def get_proper_transform(w):
 def img_merge_for_vis(width, height, imgs):
     new_image = Image.new('RGB', (width * len(imgs), height))
     for i in range(len(imgs)):
-        new_image.paste(imgs[i], (width * i, 0))        #test_img, char_img, sdt prediction, ground truth, my prediction, my prediction-character-wise
+        new_image.paste(imgs[i], (width * i, 0))
     return new_image
 
 def cal_cls_correct_num(preds_cls, cls_gt):
@@ -73,8 +73,8 @@ def tsne_save(feature_set_1, feature_set_2, f_desc_1, f_desc_2, save_path):
     #plt.xlabel('Component 1')
     #plt.ylabel('Component 2')
 
-    # 保存图像到文件
-    plt.savefig(save_path, format='png')  # 可以指定其他格式如 'pdf', 'svg' 等
+    #save image
+    plt.savefig(save_path, format='png')  #'pdf' or 'svg'
     #plt.show()
 
 def sdt_meaning(style_imgs, model_cls):
@@ -156,7 +156,7 @@ def main(opt):
     data_iter = iter(test_loader)
     with torch.no_grad():
         
-        cls_counter=0 #最終應該要=資料比數
+        cls_counter=0 #count for all records
         cls_log_path = os.path.join(opt.save_dir, 'test/clslog.txt')
         dtw_log_path = os.path.join(opt.save_dir, 'test/dtwlog.txt')
         
@@ -267,8 +267,8 @@ def main(opt):
                     sk_pil_gt = coords_render(coords[i], split=True, width=w, height=h, thickness=tn, board=0)
                     sk_pil_content = to_pil_image(content_slices[i])
                     
-                    
                     width, height = sk_pil.size
+                    #imgs form a test_img: char_img, sdt prediction, ground truth, dpct prediction
                     imgs = [sk_pil_content, sk_pil, sk_pil_gt, sk_pil_2]
                     #imgs.append(sk_pil_2_characterless)
                     #imgs.append(sk_pil_2_writerless)
@@ -280,12 +280,11 @@ def main(opt):
                     new_image_path = os.path.join(new_image_path, str(writer_id[i].item()))
                     mkdir(new_image_path)
                     new_image_path = os.path.join(new_image_path, str(writer_id[i].item()) + '_' + character+ '_sdt_gt_g1.png')
-                    #圖片比較大直接寫檔好了。
+                    
                     try:
                         new_image.save(new_image_path)
                     except:
                         print('error. %s, %s, %s' % (new_image_path, str(writer_id[i].item()), character))
-                    
                     
                     #img resize and to tensor
                     transform = get_proper_transform(w)

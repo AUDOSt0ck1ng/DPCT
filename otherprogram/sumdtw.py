@@ -1,36 +1,14 @@
 import os
 import numpy as np
 
-
-#path = '/home/hhc102u/SDT/Generated/2sets_test_lfmp_s64_all/test/dtwlog.txt'
-#path = '/home/hhc102u/SDT/Generated/2sets_current-best-195999/test/dtwlog.txt'
-path = '/home/hhc102u/SDT/Generated/2sets_test_wm-miss_only+wc/test/dtwlog.txt'
-path = '/home/hhc102u/SDT/Generated/2sets_test_wc-only/test/dtwlog.txt'
-#path = '/home/hhc102u/SDT/Generated/2sets_test_wm-match_only+wc/test/dtwlog.txt'
-
-#path = '/home/hhc102u/SDT/Generated/2sets_test_fix_sdt/test/dtwlog.txt'
-#path = '/home/hhc102u/SDT/Generated/2sets_test_wm-match_only-wc/test/dtwlog.txt'
 path = '/home/hhc102u/SDT/Generated/2sets_test_debug/test/dtwlog.txt'
 
-#path = '/home/hhc102u/SDT/Generated/2sets_test_June_v5-191999/test/dtwlog.txt'
-
-
-#path = '/home/hhc102u/SDT/Generated/2sets_test_June-case2-all-191999/test/dtwlog.txt'
-#path = '/home/hhc102u/SDT/Generated/2sets_test_wm-all+wc_redo(187999)/test/dtwlog.txt'
-#path = '/home/hhc102u/SDT/Generated/2sets_test_wm-match_only+wc_redo/test/dtwlog.txt'
-#path = '/home/hhc102u/SDT/Generated/2sets_test_wc-only-redo(191999)/test/dtwlog.txt'
-#path = '/home/hhc102u/SDT/Generated/2sets_test_wc-only-redo/test/dtwlog.txt'
-#path = '/home/hhc102u/SDT/Generated/2sets_test_lfmp-wm-p_fixed(current best)/test/dtwlog.txt'
-#path = '/home/hhc102u/SDT/Generated/2sets_test_lfmp-fixed/test/dtwlog.txt'
-#path = '/home/hhc102u/SDT/Generated/2sets_test_lf_s64_all/test/dtwlog.txt'
-#path = '/home/hhc102u/SDT/Generated/2sets_test_debug/test/dtwlog.txt'
-#path = '/home/hhc102u/SDT/Generated/2sets_test_lf_s64_all/test/dtwlog.txt'
-#path = '/home/hhc102u/SDT/Generated/2sets/test/dtwlog.txt'
+#ICDAR 2013: 60 writers (authors)
 writer_total_num = 60
 sdt=[0] * writer_total_num
 g1=[0] * writer_total_num
 i = [0] * writer_total_num
-dtw_s=[0] * writer_total_num # g1<sdt 的數量
+dtw_s=[0] * writer_total_num # g1<sdt
 
 
 with open(path, 'r') as file:

@@ -38,7 +38,6 @@ def concatenate_images_v1xv2(images, v1, v2):
     return combined_image
 
 path = '/home/hhc102u/SDT/Generated/2sets_test_wm-all+wc_redo(187999)/test/'
-#path = '/home/hhc102u/SDT/Generated/2sets_test_June_bestcheck'
 
 fbname= '_湖_sdt_gt_g1.png'
 
