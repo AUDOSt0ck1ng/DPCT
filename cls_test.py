@@ -1,5 +1,6 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+#choose your device in any way.
+#os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 #os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -88,6 +89,7 @@ class CustomDataset(Dataset):
         
         self.char_dict = pickle.load(open(char_dict_path, 'rb'))
 
+        #according to your data path and presentation, modify this part: 
         self.image_paths = show_files(root_dir,[])#show_files_in_test_dir(root_dir)
         #show_files(root_dir, [])
 
@@ -173,10 +175,10 @@ def main(opt):
         preds_gt_cls = model_cls.forward(images_GT.to('cuda'))
         preds_g1_cls = model_cls.forward(images_G1.to('cuda'))
         
-        #乒:55 乓:56 丸:37 九:62 黑:6709 黔:6710
-        ans_index=6710
-        sdt_probs = torch.softmax(preds_sdt_cls, dim=1)[:, ans_index]
-        g1_probs = torch.softmax(preds_g1_cls, dim=1)[:, ans_index]
+        #debug for checking scores 乒:55 乓:56 丸:37 九:62 黑:6709 黔:6710
+        #ans_index=6710
+        #sdt_probs = torch.softmax(preds_sdt_cls, dim=1)[:, ans_index]
+        #g1_probs = torch.softmax(preds_g1_cls, dim=1)[:, ans_index]
         
         labels = labels.to('cuda')
         
@@ -192,24 +194,24 @@ def main(opt):
         iter_num = len(gt_result)
         cls_counter += iter_num
         
-        #717寫個分數就好。
-        print(img_names)
-        print(', '.join([f"{prob.item():.4f}" for prob in sdt_probs]))
-        print(', '.join([f"{prob.item():.4f}" for prob in g1_probs]))
+        #debug
+        #print(img_names)
+        #print(', '.join([f"{prob.item():.4f}" for prob in sdt_probs]))
+        #print(', '.join([f"{prob.item():.4f}" for prob in g1_probs]))
         
         #write iter    
-        #write_log_iter(log_path, iter_num, img_names, sdt_result, gt_result, g1_result)
+        write_log_iter(log_path, iter_num, img_names, sdt_result, gt_result, g1_result)
     
     #write final
-    #write_log_final(log_path, cls_counter, sdt_cls_correct_num, gt_cls_correct_num, g1_cls_correct_num)
+    write_log_final(log_path, cls_counter, sdt_cls_correct_num, gt_cls_correct_num, g1_cls_correct_num)
         
 
 if __name__ == '__main__':
     """Parse input arguments"""
     parser = argparse.ArgumentParser()
-    parser.add_argument('--pretrained_model_cls', default='/home/hhc102u/SDT/Saved/CHINESE_CASIA/pretrained_content_encoder/checkpoint-iter3999.pth',
+    parser.add_argument('--pretrained_model_cls', default='',
                         dest='pretrained_model_cls', required=False, help='pretrained content encoder')
-    parser.add_argument('--data_path', default='/home/hhc102u/SDT/Generated/temp/cal717', dest='data_path', required=False, help='data path')
-    parser.add_argument('--char_dict_path', default='/home/hhc102u/SDT/data/CASIA_CHINESE/character_dict.pkl', dest='char_dict_path', required=False, help='char dict path')
+    parser.add_argument('--data_path', default='', dest='data_path', required=False, help='data path')
+    parser.add_argument('--char_dict_path', default='', dest='char_dict_path', required=False, help='char dict path')
     opt = parser.parse_args()
     main(opt)

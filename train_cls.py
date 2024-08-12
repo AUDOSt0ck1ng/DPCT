@@ -1,9 +1,10 @@
 import os 
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+#choose your device in any way.
+#os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+#os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 import argparse
 from parse_config import cfg, cfg_from_file, assert_and_infer_cfg
 from utils.util import fix_seed, load_specific_dict
-#from models.model import SDT_Generator
 from utils.logger import set_log
 from data_loader.loader import ScriptDataset
 import torch
@@ -26,7 +27,7 @@ def main(opt):
         cfg.DATA_LOADER.PATH, cfg.DATA_LOADER.DATASET, cfg.TRAIN.ISTRAIN, cfg.MODEL.NUM_IMGS)
     print('number of training images: ', len(train_dataset))
     train_loader = torch.utils.data.DataLoader(train_dataset,
-                                               batch_size=cfg.TRAIN.IMS_PER_BATCH*4,
+                                               batch_size=cfg.TRAIN.IMS_PER_BATCH*4,        #256
                                                shuffle=True,
                                                drop_last=False,
                                                collate_fn=train_dataset.collate_fn_,
@@ -34,7 +35,7 @@ def main(opt):
     test_dataset = ScriptDataset(
        cfg.DATA_LOADER.PATH, cfg.DATA_LOADER.DATASET, cfg.TEST.ISTRAIN, cfg.MODEL.NUM_IMGS)
     test_loader = torch.utils.data.DataLoader(test_dataset,
-                                              batch_size=cfg.TRAIN.IMS_PER_BATCH*4,
+                                              batch_size=cfg.TRAIN.IMS_PER_BATCH*4,         #256
                                               shuffle=True,
                                               sampler=None,
                                               drop_last=False,

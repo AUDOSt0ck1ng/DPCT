@@ -1,5 +1,6 @@
 import os 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+#choose your device in any way.
+#os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 #os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 import argparse
 from parse_config import cfg, cfg_from_file, assert_and_infer_cfg
@@ -81,7 +82,7 @@ def main(opt):
             
         for param in fixed_classifier.parameters():
             param.requires_grad = False
-    
+    #depreciated in DPCT but used in SDT
     #elif len(opt.content_pretrained) > 0:
     #    model_dict = load_specific_dict(model.contentcls.feature_ext, opt.content_pretrained, "feature_ext")
     #    model.contentcls.feature_ext.load_state_dict(model_dict)

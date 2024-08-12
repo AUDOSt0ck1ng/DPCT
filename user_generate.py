@@ -1,13 +1,15 @@
-#torch.cuda.set_device(2)
 import os 
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+#choose your device in any way.
+#os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+#os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 import argparse
 import os
 from parse_config import cfg, cfg_from_file, assert_and_infer_cfg
 import torch
 from data_loader.loader import UserDataset
 import pickle
-from models.model import SDT_Generator
+from models.model import DPCT_Generator
+from models.sdt_model import SDT_Generator
 import tqdm
 from utils.util import writeCache, dxdynp_to_list, coords_render
 import lmdb
@@ -30,6 +32,7 @@ def main(opt):
     os.makedirs(os.path.join(opt.save_dir), exist_ok=True)
 
     """build model architecture"""
+    #sdt or dpct = DPCT_Generator(...).to.to('cuda')
     model = SDT_Generator(num_encoder_layers=cfg.MODEL.ENCODER_LAYERS,
             num_head_layers= cfg.MODEL.NUM_HEAD_LAYERS,
             wri_dec_layers=cfg.MODEL.WRI_DEC_LAYERS,

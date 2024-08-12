@@ -1,7 +1,7 @@
-#torch.cuda.set_device(2)
 import os 
+#choose your device in any way.
 #os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+#os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 import argparse
 import os
 import numpy as np
@@ -190,6 +190,7 @@ def main(opt):
                 preds_2, flat_pro_meaning_fea, flat_pro_writer_fea, flat_pro_character_fea = model_2.inference(img_list, char_img, 120)
                 preds_2 = add_SOS_token(preds_2, bs)
                 
+                # not necessary part:
                 #pred_2_characterless
                 #pred_2_characterless, _, _, _ = model_2.inference_option(img_list, char_img, 120, False, True)
                 #pred_2_characterless = add_SOS_token(pred_2_characterless, bs)
@@ -201,11 +202,8 @@ def main(opt):
                 #pred_2_disable_all, _, _, _ = model_2.inference_option(img_list, char_img, 120, True, True)
                 #pred_2_disable_all = add_SOS_token(pred_2_disable_all, bs)
                 
-                ##tsne繪製特徵分布
-                #todo
+                #tsne for writer and character seperation
                 if len(opt.tsne) > 0:
-                    tsne_save(sdt_flat_pro_meaning_fea, sdt_flat_pro_writer_fea, 'sdt content features', 'sdt writer features', os.path.join(opt.save_dir, 'sdt_WM_tsne.png'))
-                    tsne_save(sdt_flat_pro_meaning_fea, flat_pro_writer_fea, 'dpct content features', 'dpct writer features', os.path.join(opt.save_dir, 'dpct_WM_tsne.png'))
                     tsne_save(sdt_flat_pro_character_fea, sdt_flat_pro_writer_fea, 'sdt character features', 'sdt writer features', os.path.join(opt.save_dir, 'sdt_WC_tsne.png'))
                     tsne_save(flat_pro_character_fea, flat_pro_writer_fea, 'dpct character features', 'dpct writer features', os.path.join(opt.save_dir, 'dpct_WC_tsne.png'))    
                 
@@ -226,7 +224,7 @@ def main(opt):
                 dtw_v2 = [] # g1 gt
                 dtw_v3 = [] # sdt g1
                 
-                #計算dtw: gt, sdt, g1
+                #dtw: gt, sdt, g1
                 for i, pred in enumerate(preds):    
                     character = char_dict[character_id[i].item()]
                     pred, _ = dxdynp_to_list(preds[i])

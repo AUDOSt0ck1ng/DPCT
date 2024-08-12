@@ -86,7 +86,7 @@ def main(opt):
                     print('error. %s, %s, %s' % (save_path, str(writer_id[i].item()), character))
                     print('error. %s, %s, %s' % (save_path_gt, str(writer_id[i].item()), character))
                 
-                '''
+                ''' not recommand but it works or try
                 # Visualize and save the character trajectory
                 img = np.ones((v_size, v_size, 3), np.uint8) * 255  # White background
                 seq_1_scaled = (seq_1 * 20).int().cpu().numpy()  # Scale coordinates for better visualization
