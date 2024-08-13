@@ -12,20 +12,20 @@ Based on the implementation of [SDT]( https://github.com/dailenson/SDT ), the tr
 Thanks for their great work !!
 
 ## Get Started
-# Git Clone
+### Git Clone
 git clone https://github.com/AUDOSt0ck1ng/DPCT.git
 
-# Create Conda Env
+### Create Conda Env
 conda create --name DPCT python=3.8
 y
 conda activate DPCT
 
-# Install dependencies
+### Install dependencies
 cd ./DPCT
 conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
 y
 pip3 install -r requirements.txt
 
-## Prepare Data, Use the Offered Data from [SDT]( https://github.com/dailenson/SDT ): Training, Testing, and 
+### Prepare Data, Use the Offered Data from [SDT]( https://github.com/dailenson/SDT ): Training, Testing, and 
 ln -s "your_decompression_path" "./data"
 
