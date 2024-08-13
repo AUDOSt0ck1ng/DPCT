@@ -11,17 +11,20 @@
             "request": "launch",
             "program": "user_generate.py",
             "console": "integratedTerminal",
-            "cwd": "/home/hhc102u/SDT",
-            "justMyCode": false,
+            //"cwd": "your_working_folder_path",
+            //"justMyCode": false,
             "args": [
                 "--cfg",
                 "configs/CHINESE_USER.yml",
                 "--dir",
                 "Generated/Chinese_User",
                 "--pretrained_model",
+                "",
+                //model weight path
                 "./model_zoo/checkpoint-iter199999.pth",
                 "--style_path",
-                "/home/hhc102u/SDT/data/CASIA_CHINESE/style_samples_style20"
+                ""
+                //"your_style_samples_path..."
             ]
         },
         //depreciated, replace it with test 2sets
@@ -31,7 +34,7 @@
             "request": "launch",
             "program": "test.py",
             "console": "integratedTerminal",
-            "cwd": "/home/hhc102u/SDT",
+            //"cwd": "your_working_folder_path",
             "args": [
                 "--pretrained_model",
                 "./model_zoo/checkpoint-iter199999.pth",
@@ -39,7 +42,7 @@
                 "img",
                 //"--store_type", "online", 
                 "--sample_size",
-                "500",
+                "500",//a specific number or all
                 "--dir",
                 "Generated/Chinese"
             ]
@@ -51,19 +54,20 @@
             "request": "launch",
             "program": "test2sets.py",
             "console": "integratedTerminal",
-            "cwd": "/home/hhc102u/SDT",
+            //"cwd": "your_working_folder_path",
             "env": {"PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "2"},
             "args": [
                 "--pretrained_model",
+                //SDT_model_weight_path
                 "./model_zoo/checkpoint-iter199999.pth",
                 "--pretrained_model_2",
-                "./Saved/CHINESE_CASIA/Chinese_cls-fixed_wm-all+wc-20240517_162135/model/checkpoint-iter187999.pth",
-
+                //DPCT_model_weight_path
+                "",
                 "--pretrained_model_cls",
-                "./Saved/CHINESE_CASIA/Chinese_cls_256-20240610_150418/model/checkpoint-iter3999.pth",
-
+                //pretrained_classifier_weight_path
+                "",
                 "--sample_size",
-                "10",
+                "10",//a specific number or all
                 "--dir",
                 "Generated/2sets_test_debug"
             ]
@@ -75,7 +79,7 @@
             "request": "launch",
             "program": "cls_test.py",
             "console": "integratedTerminal",
-            "cwd": "/home/hhc102u/SDT",
+            //"cwd": "your_working_folder_path",
             "env": {"PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "2"},
             "args": [
                 "--pretrained_model_cls",
@@ -97,12 +101,12 @@
             "request": "launch",
             "program": "evaluate.py",
             "console": "integratedTerminal",
-            "cwd": "/home/hhc102u/SDT",
+            //"cwd": "your_working_folder_path",
             "args": [
                 "--data_path",
-                "Generated/Chinese_purposal_online_test_modify_gamma_1",
+                //"Generated/path...",
                 //"--visualize_dir",
-                //"Generated/Chinese_purposal_online_test_modify_gamma_1/vis"
+                //"visualized_path"
             ]
         },
         {
@@ -111,7 +115,7 @@
             "request": "launch",
             "program": "train.py",
             "console": "integratedTerminal",
-            "cwd": "/home/hhc102u/SDT",
+            //"cwd": "your_working_folder_path",
             "args": [
                 "--pretrained_model","",
                 "--contentcls_pretrained",
@@ -122,7 +126,7 @@
                 "--cfg",
                 "./configs/CHINESE_CASIA.yml",
                 "--log",
-                "Chinese_cls-sdt_train_debug"
+                "Chinese_train_debug"
 
             ]
         },
@@ -133,11 +137,8 @@
             "request": "launch",
             "program": "train_cls.py",
             "console": "integratedTerminal",
-            "cwd": "/home/hhc102u/SDT",
-            "justMyCode": false,
+            //"cwd": "your_working_folder_path",
             "args": [
-                //"--pretrained_model",
-                //"./Saved/CHINESE_CASIA/Chinese_cls-20240423_021903/model/checkpoint-iter23999.pth",
                 "--content_pretrained",
                 "./model_zoo/position_layer2_dim512_iter138k_test_acc0.9443.pth",
                 "--cfg",
